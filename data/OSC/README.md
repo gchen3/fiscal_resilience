@@ -2,7 +2,7 @@
 
 Download date: 2026-02-04
 Source: https://wwe1.osc.state.ny.us/localgov/findata/financial-data-for-local-governments.cfm
-Selection: All classes of government; all available years (1995–2025)
+Selection: All classes of government; all available years (1995-2025)
 Files: Downloaded as ZIP, then unzipped into this folder.
 
 Notes:
