@@ -45,3 +45,33 @@ for (year in begin_year:end_year) {
   )
   names(school_data[[as.character(year)]]) <- tolower(names(school_data[[as.character(year)]]))
 }
+
+# Merge across years ---------------------------------------------------------------
+merge_years <- function(data_list) {
+  merged <- dplyr::bind_rows(data_list, .id = "year")
+  names(merged) <- tolower(names(merged))
+  merged$year <- as.integer(merged$year)
+
+  if ("account_code" %in% names(merged)) {
+    merged$account_code_letter <- stringr::str_extract(merged$account_code, "^[A-Za-z]+")
+    merged$account_code_number <- stringr::str_extract(merged$account_code, "[0-9]+")
+  }
+
+  merged
+}
+
+city_data_all <- merge_years(city_data)
+county_data_all <- merge_years(county_data)
+town_data_all <- merge_years(town_data)
+school_data_all <- merge_years(school_data)
+
+# Save merged data ---------------------------------------------------------------
+output_dir <- here::here("data", "OSC")
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+saveRDS(city_data_all, file = here::here("data", "OSC", "city_data_all.rds"))
+saveRDS(county_data_all, file = here::here("data", "OSC", "county_data_all.rds"))
+saveRDS(town_data_all, file = here::here("data", "OSC", "town_data_all.rds"))
+saveRDS(school_data_all, file = here::here("data", "OSC", "school_data_all.rds"))

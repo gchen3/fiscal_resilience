@@ -5,7 +5,8 @@ required_pkgs <- c(
   'readr',
   'dplyr',
   'stringr',
-  'purrr'
+  'purrr',
+  'here'
 )
 
 missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]

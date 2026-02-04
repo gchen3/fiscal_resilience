@@ -9,6 +9,7 @@
 *.sas7bdat
 *.parquet
 *.feather
+*.rds
 *.zip
 *.7z
 *.tar
