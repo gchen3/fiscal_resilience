@@ -1,0 +1,24 @@
+# Raw data files
+*.xlsx
+*.xls
+*.csv
+*.dta
+*.rdata
+*.RData
+*.sav
+*.sas7bdat
+*.parquet
+*.feather
+*.zip
+*.7z
+*.tar
+*.gz
+
+# R artifacts
+.Rhistory
+.RDataTmp
+.Rproj.user/
+
+# OS
+.DS_Store
+Thumbs.db
