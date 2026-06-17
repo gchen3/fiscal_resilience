@@ -1,5 +1,5 @@
-# 04_analysis.R
-# Run analyses and model estimation.
+# 60_descriptives.R
+# Descriptive statistics and summary tables.
 
 merged_dir <- here::here("data", "processed_data")
 

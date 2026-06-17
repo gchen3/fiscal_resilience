@@ -1,7 +1,7 @@
-# 03_merge.R
+# 30_merge.R
 # Merge datasets into analysis-ready tables.
 # NOTE:
-# - Run 02_clean.R before this script.
+# - Run 20_clean.R before this script (same session).
 # - This script expects generated objects named <entity_prefix>_<variable>
 #   in .GlobalEnv and merges them by year/entity/code.
 # - After merge, it removes intermediate category objects and keeps only

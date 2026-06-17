@@ -9,6 +9,7 @@ the raw OSC source data without reading the code.
 - [`model_registry.md`](model_registry.md) — every statistical model / estimation, its
   specification, sample, and the source variables it depends on.
 
-These files are **hand-maintained**. When `code/02_clean.R` (variables) or
-`code/04_analysis.R` and later scripts (models) change, update the matching registry rows in
-the **same commit** so the trail never drifts from what the code actually produces.
+These files are **hand-maintained**. When variable-producing scripts (`code/20_clean.R`,
+`code/40_construct_resilience.R`, `code/45_construct_predictors.R`) or model scripts
+(`code/70_model_main.R`, `code/75_model_robustness.R`) change, update the matching registry
+rows in the **same commit** so the trail never drifts from what the code actually produces.

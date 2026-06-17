@@ -4,7 +4,7 @@ Hand-maintained audit trail for every variable created in the pipeline. The goal
 any variable can be traced back to the raw OSC source data without reading the code.
 
 - **Maintenance:** hand-edited. When a variable is added/removed/renamed in
-  `code/02_clean.R`, update the matching row here in the same commit.
+  `code/20_clean.R`, update the matching row here in the same commit.
 - **Source data vintage:** NYS OSC local government finance download, fiscal years 1995–2025,
   downloaded 2026-02-04 (see `data/OSC/README.md`).
 - **OSC glossary (fill the Definition / Glossary ref columns from here):**
@@ -13,12 +13,12 @@ any variable can be traced back to the raw OSC source data without reading the c
 ## How these variables are created (shared lineage)
 
 All finance variables below are produced by `generate_finance()` in
-[`code/02_clean.R`](../code/02_clean.R) and merged into wide entity-year tables by
-[`code/03_merge.R`](../code/03_merge.R). The lineage is identical for every row, so it is
+[`code/20_clean.R`](../code/20_clean.R) (functions in `code/functions/finance.R`) and merged
+into wide entity-year tables by [`code/30_merge.R`](../code/30_merge.R). The lineage is identical for every row, so it is
 documented once here rather than repeated per variable:
 
 1. **Raw input:** per-year OSC CSVs in `data/OSC/all_classes_years/<year>_<Class>.csv`
-   (City, County, Town, SchoolDistrict), imported by `code/01_import.R`.
+   (City, County, Town, SchoolDistrict), imported by `code/10_import.R`.
 2. **Source columns used:** `amount` (the value summed), keyed by `calendar_year`,
    `entity_name`, `municipal_code`; filtered on `financial_statement_segment` /
    `account_code_section` (revenue vs expenditure) and `level_1_category` / `level_2_category`.

@@ -34,10 +34,10 @@ Notes:
 
 ## How These Files Are Created
 
-1. `code/02_clean.R`
+1. `code/20_clean.R`
    - Cleans raw OSC data.
    - Generates entity-prefixed finance objects for city, county, town, and school.
-2. `code/03_merge.R`
+2. `code/30_merge.R`
    - Merges generated variables into one wide table per entity type.
    - Removes intermediate generated objects from memory.
    - Writes the four merged `.rds` files to this folder.
@@ -46,6 +46,6 @@ Notes:
 
 From project root, run scripts in order:
 
-1. `source("code/library.R")`
-2. `source("code/02_clean.R")`
-3. `source("code/03_merge.R")`
+1. `source("code/00_library.R")`
+2. `source("code/20_clean.R")`
+3. `source("code/30_merge.R")`
