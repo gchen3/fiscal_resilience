@@ -267,10 +267,32 @@ every entity. The **Entities** column records where each variable is present.
 
 ## Derived / analysis variables
 
-Resilience indicators, ratios, deflated/per-capita transforms, and shock indicators are
-**not yet created**. Add them here as they are built (one row each), recording the exact
-formula and the source variables they depend on.
+Resilience dependent variables, built in `code/40_construct_resilience.R` (functions in
+`code/functions/resilience.R`) from the **raw** `data/OSC/<entity>_data_all.rds`, restricted to
+the **General Fund** (account-code letter `A`). Spec: `plan_docs/01_fiscal_resilience_dv_plan.md`.
+Entity-year keys: `calendar_year`, `entity_name`, `municipal_code`. Built for cities (validated),
+counties, and towns; schools pending General-Fund-code verification. FY2025 dropped (incomplete).
 
-| Variable | Definition / formula | Source variable(s) | Created in | Date added |
+| Variable | Definition / formula | Source rows (General Fund) | Created in | Date added |
 |---|---|---|---|---|
-| _none yet_ | | | | |
+| `gf_total_exp` | Sum of General Fund expenditures, all objects except interfund transfers (DV1 denominator) | expenditure-segment rows, `object != interfund transfer` | 40_construct_resilience.R | 2026-06-17 |
+| `gf_operating_exp` | Sum of GF current-operating expenditure (DV2 base) | expenditure rows, `object ∈ {personal services, contractual, employee benefits}` | 40_construct_resilience.R | 2026-06-17 |
+| `total_fund_balance` | GF ending total fund balance | new-era `fbnp` "fund balance - end of year"; old-era balance-sheet `equity - *` fund-balance components | 40_construct_resilience.R | 2026-06-17 |
+| `available_fb` | GF available balance (broad) = unassigned + assigned; pre-GASB54 = unreserved (adaptive rule) | `gl` unassigned/assigned narratives; old-era `equity - unreserved/unassigned/assigned` | 40_construct_resilience.R | 2026-06-17 |
+| `unassigned_fb` | GF available balance (narrow) = unassigned only / unreserved (pre-54) | as above, unassigned/unreserved only | 40_construct_resilience.R | 2026-06-17 |
+| `fb_ratio` | **DV1** = `total_fund_balance / gf_total_exp` (higher = more buffer) | derived | 40_construct_resilience.R | 2026-06-17 |
+| `available_fb_ratio` | **DV1** = `available_fb / gf_total_exp` | derived | 40_construct_resilience.R | 2026-06-17 |
+| `exp_gap_sr` | **DV2 absolute** short-run gap = `|E_t - E_{t-1}| / E_{t-1}` (consecutive years) | `gf_operating_exp` | 40_construct_resilience.R | 2026-06-17 |
+| `exp_gap_lr` | **DV2 absolute** long-run gap = `|E - Ehat| / Ehat`, `Ehat = exp(fit log(E)~year)`, ≥8 yrs | `gf_operating_exp` | 40_construct_resilience.R | 2026-06-17 |
+| `sensitivity_sr` | **DV2 relative** = `exp_gap_sr / mean(exp_gap_sr)` within `size_class × year` (≥5 units) | `exp_gap_sr`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
+| `sensitivity_lr` | **DV2 relative** = `exp_gap_lr / mean(exp_gap_lr)` within `size_class × year` | `exp_gap_lr`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
+| `size_class` | Within-entity-type quintile (1–5) of time-averaged `gf_operating_exp`, static per unit | `gf_operating_exp` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_total` | Total GF operating revenue = revenue rows excl. financing (proceeds of debt, other sources) | revenue rows by `level_1_category` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_own` | Own-source revenue = `rev_total` excl. state aid, federal aid, charges to other governments | revenue rows by `level_1_category` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_tax` | Tax revenue = real property taxes & assessments + sales and use tax | revenue rows by `level_1_category` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_total_gap_sr` / `_gap_lr` | **DV4 absolute** revenue gaps (short-run YoY; long-run vs log trend) | `rev_total` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_total_sens_sr` / `_sens_lr` | **DV4 relative** revenue sensitivity (gap ÷ `size_class × year` mean) | `rev_total_gap_*`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_own_gap_sr` / `_gap_lr` / `_sens_sr` / `_sens_lr` | **DV4** own-source revenue gaps + sensitivity | `rev_own`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
+| `rev_tax_gap_sr` / `_gap_lr` / `_sens_sr` / `_sens_lr` | **DV4** tax revenue gaps + sensitivity | `rev_tax`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
+
+DV3 (recovery trajectory) is planned — add rows when built.

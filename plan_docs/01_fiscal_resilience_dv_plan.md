@@ -117,7 +117,8 @@ ratio unambiguous.
 
 **→ Use a per-entity-year *adaptive* available-balance rule:** take `unreserved` where present,
 else `unassigned` (+`assigned`). Handles mixed 2011 and both breaks automatically. Continuity
-check passed: total GF balance 2012 ($566M) → 2013 ($672M), no catastrophic splice. A **build-time
+check (clean extraction, cities): total GF balance 2012 ($536M) → 2013 ($672M) — a ~25% step
+that is entity-specific (Albany, e.g., is continuous), to inspect per the validation step. A **build-time
 validation** enumerates the exact labels present in *every* year before trusting the spliced series.
 
 ## 7. DV2 — Expenditure-gap sensitivity (General Fund operating)
@@ -243,7 +244,7 @@ modeling panel in `50_assemble_panel.R`; models in `70_model_main.R` / `75_model
   2009/2020 (confirms the absolute/relative distinction).
 - `fb_ratio` plausible range (~0–0.5+; negative = deficit fund balance — real, flag it); inspect
   **both breakpoints** (GASB 54 ~FY2011 mixed adoption; schema FY2012→2013) for level shifts. The
-  adaptive rule (§6) should keep `available_fb` continuous; total-FB 2012 $566M → 2013 $672M is the
+  adaptive rule (§6) should keep `available_fb` continuous; total-FB 2012 $536M → 2013 $672M is the
   benchmark.
 - **External validation vs OSC Fiscal Stress Monitoring System (FSMS).** OSC publishes
   fund-balance-% and fiscal-stress scores per local government; cross-check a handful of computed

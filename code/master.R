@@ -16,7 +16,7 @@ source('code/00_library.R')
 # source('code/30_merge.R')         # merge               -> data/processed_data/*_data_merged.rds
 
 # --- Construction ---------------------------------------------------------------
-# source('code/40_construct_resilience.R')  # DV1-DV4     -> *_resilience.rds   [stub]
+# source('code/40_construct_resilience.R')  # DV1+DV2 (city/county/town) -> *_resilience.rds
 # source('code/45_construct_predictors.R')  # explanatory vars -> *_predictors.rds [stub]
 # source('code/50_assemble_panel.R')        # join        -> analysis_panel.rds  [stub]
 
