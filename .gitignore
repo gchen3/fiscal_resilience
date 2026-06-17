@@ -20,6 +20,13 @@
 .RDataTmp
 .Rproj.user/
 
+# Rendered Quarto / HTML output (regenerate from the .md/.qmd sources)
+*.html
+*_files/
+
+# Reference PDFs (published papers etc.) — keep local, not in git history
+*.pdf
+
 # OS
 .DS_Store
 Thumbs.db
