@@ -39,6 +39,8 @@ slides/           Presentation materials
 
 The primary data source is NYS OSC financial data for local governments. Download notes and the OSC glossary link are in `data/OSC/README.md`. Raw and generated data files are intentionally gitignored because they are large and should be regenerated from source scripts.
 
+**New York City is excluded by the data itself.** The OSC dataset reports NYC and its five boroughs separately, so they are absent here: the city panel covers 61 cities (all NY cities except NYC) and the county panel 57 counties (all 62 except the five NYC-borough counties). No NYC filter is applied or needed, consistent with the standard convention in NYS local-government research. (If school districts are added later, verify the NYC Department of Education is likewise absent.)
+
 ## Running the Workflow
 
 Run commands from the repository root so `here::here()` resolves paths correctly.
