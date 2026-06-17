@@ -4,8 +4,6 @@ This repository supports an academic research project on fiscal resilience in lo
 
 The project is motivated by dynamic capabilities theory. It will measure fiscal resilience using financial indicators such as revenue recovery, spending patterns, and fund balance, then examine how resilience is shaped by structural conditions and government capabilities. Planned explanatory factors include legacy costs, social vulnerability, political environment, prior disaster experience, organizational capacity, and budgetary institutions.
 
-The project abstract is available in `public_docs/Abstract_ABFM2026_ChenKimLee.docx`.
-
 ## Current Status
 
 The repository is currently in the data download, import, cleaning, and merge-preparation stage. OSC source data have been downloaded locally, and scripts now focus on transforming raw annual files into analysis-ready entity-year tables.
