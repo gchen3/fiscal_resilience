@@ -37,11 +37,16 @@ Recovery is only meaningful where there is something to recover *from*. The desc
 (`plan_docs/02`) show **operating spending is sticky** — no drawdown at 2009/2020 — so a recovery
 metric on `gf_operating_exp` is near-zero depth / instant recovery and uninformative on its own.
 
-- **Lead series — `available_fb`** (reserves get drawn down then rebuilt: the clearest bounce-back).
+- **Lead series — `available_fb_ratio`** (reserves ÷ GF expenditure: drawn down then rebuilt — the
+  clearest bounce-back). **Resolved 2026-06-17:** use the bounded *ratio* with a **level
+  (ratio-point) drawdown and no deflation**, not raw `available_fb` with a proportional drawdown —
+  raw fund balance is near-zero/negative for some cities and the proportional form explodes
+  (validation below). A ratio is already real, so it is not deflated.
 - **Channel series — `rev_own`** (own-source revenue: the tax-base shock channel; `rev_tax` as a
-  sharper variant).
+  sharper variant). Proportional drawdown on CPI-U-deflated real dollars.
 - **Contrast series — `gf_operating_exp`** (kept only to show services were *held steady* — a low
   drawdown here against a deep revenue drawdown is itself the resilience story / pass-through).
+  Proportional drawdown on deflated real dollars.
 
 Build the function **series-agnostic** (one `series_col` argument) and run it on all three.
 
@@ -172,6 +177,19 @@ no nominal recovery numbers are reported.
   sticky-spending finding and the pass-through framing).
 - Report share of `NA` DV3 (too-short pre-period, missing base, zero baseline) and the
   recovered/censored split per shock.
+
+**Validation outcome (2026-06-17, cities, against `city_resilience.rds`):** implemented and run.
+`rev_own` / `gf_operating_exp` behave as expected — operating-expenditure drawdowns are **shallow**
+(GFC mean ≈ 0.03, COVID ≈ 0.08) vs revenue (≈ 0.05–0.06), confirming sticky spending; COVID
+recovery is mostly **censored** (e.g. 32/61 for operating exp). The earlier raw-`available_fb` proportional
+drawdown **failed**: raw fund balance ranges −$29M…+$184M and some pre-shock baselines are only a
+few thousand $, so `(B - min Y)/B` exploded (Long Beach COVID ≈ 800×). **Resolved:** the reserves
+target is now `available_fb_ratio` with a **level (ratio-point) drawdown, undeflated** — depths
+are now bounded (max ≈ 0.70 ratio points, 0% `NA`; deeper than COVID at the GFC, mean ≈ 0.13 vs
+0.08). `rev_own` and `gf_operating_exp` keep the proportional form (unchanged). Descriptive output:
+`code/65_recovery_descriptives.R` → `analysis/recovery_descriptives.qmd`. Substantive reads: COVID
+recovery-time is heavily censored (operating exp ≈ 52%); depth↔speed is positively correlated for
+every series (Spearman ≈ 0.40–0.63 — deeper drawdowns rebuild more slowly).
 
 ## 10. Scope / sequencing
 

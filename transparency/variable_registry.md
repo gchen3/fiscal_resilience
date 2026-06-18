@@ -303,4 +303,39 @@ labels (not the formulas) are what changed.
 | `rev_own_gap_sr` / `_gap_lr` / `_sens_sr` / `_sens_lr` | **DV4** own-source revenue gaps + sensitivity | `rev_own`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
 | `rev_tax_gap_sr` / `_gap_lr` / `_sens_sr` / `_sens_lr` | **DV4** tax revenue gaps + sensitivity | `rev_tax`, `size_class` | 40_construct_resilience.R | 2026-06-17 |
 
-DV3 (recovery trajectory) is planned — add rows when built.
+### DV3 — shock recovery trajectory (`<entity>_recovery.rds`)
+
+Built in `code/40_construct_resilience.R` via `build_entity_recovery()` /
+`build_recovery_trajectory()` (`code/functions/resilience.R`); spec
+`plan_docs/03_recovery_variable_plan.md`. **Separate grain: entity × shock × series** (an event
+study, not entity-year). Shocks: 2009 (GFC), 2020 (COVID). Baseline `B` = mean of the series over
+`[t0-3, t0-1]`. Window 6 yrs; horizon 4 yrs.
+
+**Two depth scales (`metric_scale`):** the **reserves** target is `available_fb_ratio` (available
+fund balance ÷ GF expenditure) with a **level (ratio-point)** drawdown and **no deflation** — a
+ratio is already real, and a proportional drawdown explodes for near-zero reserves (resolved
+2026-06-17; see note). The **dollar flows** `rev_own` and `gf_operating_exp` use a **proportional**
+drawdown on CPI-U-deflated real 2023 dollars (`data/reference/price_index.csv`; provenance in
+`transparency/reference_sources.md`).
+
+| Variable | Definition / formula | Source | Created in | Date added |
+|---|---|---|---|---|
+| `entity_type` / `entity_name` / `municipal_code` | Unit keys | panel | 40_construct_resilience.R | 2026-06-17 |
+| `series` | Target: `available_fb_ratio` (reserves), `rev_own`, or `gf_operating_exp` | panel | 40_construct_resilience.R | 2026-06-17 |
+| `metric_scale` | `ratio_points` (reserves, level) or `proportional` (flows, %) | constant | 40_construct_resilience.R | 2026-06-17 |
+| `shock` | Shock year `t0` (2009 or 2020) | constant | 40_construct_resilience.R | 2026-06-17 |
+| `baseline` | Pre-shock level `B = mean(Y, [t0-3, t0-1])`. Flows: real $; reserves: ratio. `NA` if missing (flows also if `B ≤ 0`) | `series` (flows deflated) | 40_construct_resilience.R | 2026-06-17 |
+| `drawdown` | **DV3 depth** over `[t0, t0+6]`. Reserves: `max(0, B − min Y)` (ratio points). Flows: `max(0, (B − min Y)/B)` (proportional) | `series` | 40_construct_resilience.R | 2026-06-17 |
+| `trough_year` | Year of the minimum `Y` in the window | `series` | 40_construct_resilience.R | 2026-06-17 |
+| `recovery_years` | **DV3 speed** = first `k ≥ 0` with `Y_{t0+k} ≥ B`; `NA` if not recovered in window | `series` | 40_construct_resilience.R | 2026-06-17 |
+| `recovered` | `TRUE` if recovered to baseline within the window | derived | 40_construct_resilience.R | 2026-06-17 |
+| `censored` | `TRUE` if not recovered AND window extends past the last observed year (right-censored, esp. COVID) | derived | 40_construct_resilience.R | 2026-06-17 |
+| `recovery_ratio` | Level at `t0+4` vs `B`. Flows: `Y_h / B`. Reserves: `Y_h − B` (signed ratio-point gap) | `series` | 40_construct_resilience.R | 2026-06-17 |
+| `size_class` | Static size quintile carried from the resilience panel (for by-size descriptives) | resilience panel | 40_construct_resilience.R | 2026-06-17 |
+
+> **Resolved (2026-06-17):** an earlier proportional drawdown on the **raw** `available_fb`
+> dollar level was unstable — fund balance is near-zero/negative for some cities (range
+> −$29M…+$184M), so the ratio exploded (Long Beach COVID ≈ 800×). Fixed by switching the reserves
+> target to the bounded `available_fb_ratio` with a **level** drawdown (now max ≈ 0.7 ratio
+> points, 0% `NA`). The dollar flows keep the proportional form (well-behaved). Descriptives:
+> `code/65_recovery_descriptives.R` → `analysis/recovery_descriptives.qmd`.

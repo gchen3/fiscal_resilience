@@ -1,0 +1,142 @@
+---
+title: "Shock-Recovery (DV3) Variables — Descriptive Statistics"
+subtitle: "NYS cities · GFC (2009) and COVID (2020) · drawdown depth + time-to-recover"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    fig-align: center
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr); library(readr); library(gt); library(here); library(knitr)
+
+tab <- function(name) here::here("outputs", "recovery_descriptives", "tables", paste0(name, ".csv"))
+fig <- function(name) here::here("outputs", "recovery_descriptives", "figures", paste0(name, ".png"))
+
+# Render a saved CSV as a gt table, formatting numeric columns.
+show_tbl <- function(name, title = NULL, subtitle = NULL, decimals = 3) {
+  d <- readr::read_csv(tab(name), show_col_types = FALSE)
+  num <- names(d)[vapply(d, is.numeric, logical(1))]
+  pct <- intersect(c("pct_missing", "na_baseline", "recovered_pct", "censored_pct",
+                     "notrecovered_pct"), names(d))
+  g <- gt::gt(d)
+  if (!is.null(title)) g <- gt::tab_header(g, title = title, subtitle = subtitle)
+  if (length(num)) g <- gt::fmt_number(g, columns = dplyr::all_of(setdiff(num, c(pct, "n", "shock"))), decimals = decimals)
+  if (length(pct)) g <- gt::fmt_percent(g, columns = dplyr::all_of(pct), decimals = 1)
+  if ("n" %in% names(d)) g <- gt::fmt_number(g, columns = "n", decimals = 0)
+  if ("shock" %in% names(d)) g <- gt::fmt_number(g, columns = "shock", decimals = 0, use_seps = FALSE)
+  g
+}
+```
+
+This report describes the **DV3 shock-recovery** variables — the *bounce-back* facet of fiscal
+resilience that the stability measures (DV2) do not capture. The grain is an **event study**:
+one row per **entity × shock × target series**, for the two common shocks **2009 (GFC)** and
+**2020 (COVID)**. Sample: NYS **cities** (NYC absent from the OSC data). Three target series are
+tracked: **reserves** (`available_fb_ratio`, available fund balance ÷ GF expenditure — a *level*
+drawdown in ratio points, undeflated), **own-source revenue** and **operating expenditure**
+(real-dollar *proportional* drawdowns, CPI-U deflated to 2023). Artifacts are produced by
+`code/65_recovery_descriptives.R`; this document presents them. *Lower drawdown + faster recovery
+= more resilient.*
+
+## 1. Definitions
+
+For each unit and shock year `t0`, a pre-shock **baseline** `B` is the mean of the target over
+`[t0-3, t0-1]`. **Drawdown** is the worst shortfall below `B` over `[t0, t0+6]`; **recovery time**
+is the first year the target climbs back to `B`. Because raw fund balance is near-zero/negative
+for some cities, reserves use a **level (ratio-point)** drawdown rather than a proportional one
+(which would explode); the dollar flows use the proportional form.
+
+```{r}
+show_tbl("01_definitions")
+```
+
+## 2. Construction
+
+Targets are CPI-U deflated **before** the metrics where they are dollar flows, so neither
+inflation nor the ARPA-driven nominal fund-balance surge is mistaken for recovery; the reserves
+ratio is already real and is not deflated. Shocks `t0 = 2009, 2020`; window 6 years; horizon 4
+years. CPI-U provenance: `transparency/reference_sources.md`.
+
+```{r}
+show_tbl("02_construction")
+```
+
+## 3. Descriptive statistics & distribution
+
+Drawdown scale differs by series (reserves in **ratio points**, flows **proportional**), so read
+each series on its own row. `recovery_years` is summarized over **recovered** cases only.
+
+```{r}
+show_tbl("03_summary_stats", decimals = 3)
+```
+
+Recovery status shows the headline asymmetry between the two shocks: the **GFC window is fully
+observed** (no censoring), while **COVID recovery is heavily right-censored** — most clearly for
+operating expenditure (≈ 52% censored), because the panel ends before the post-COVID window
+closes. So COVID is a *depth* story; its recovery *speed* is largely unknown.
+
+```{r}
+show_tbl("03_recovery_status")
+```
+
+```{r}
+#| fig-cap: "Drawdown-depth distributions by series and shock (winsorized 1/99 within series)."
+knitr::include_graphics(fig("03_drawdown_distributions"))
+```
+
+## 4. By shock (GFC vs COVID)
+
+There is no annual time series at this grain; the comparison that matters is **2009 vs 2020**.
+Two things stand out: **operating spending barely dips** in either shock (the sticky-spending
+finding again — services are protected), and **reserves were hit harder by the GFC than by
+COVID** (mean drawdown ≈ 0.13 vs 0.08 ratio points) — consistent with federal relief (ARPA)
+cushioning the COVID reserve hit. Labels show the share that recovered within the window.
+
+```{r}
+#| fig-cap: "Mean drawdown depth by series and shock; labels = share recovered within the window."
+knitr::include_graphics(fig("04_by_shock"))
+```
+
+## 5. Depth vs speed
+
+Do deeper shocks take longer to climb back? Among **recovered** cases, drawdown depth and
+recovery time are **positively correlated for every series** (Spearman ≈ 0.40–0.63) — deeper
+reserve/revenue drawdowns rebuild more slowly, strongest for own-source revenue. This is the
+substantive content of DV3 that a stability measure misses.
+
+```{r}
+show_tbl("05_depth_vs_speed", decimals = 2)
+```
+
+```{r}
+#| fig-cap: "Years to recover vs drawdown depth (recovered cases only), by series and shock."
+knitr::include_graphics(fig("05_depth_vs_speed"))
+```
+
+## 6. Distribution by size quintile
+
+Size class = within-city quintile of time-averaged operating expenditure (1 = smallest).
+Drawdown depth winsorized within series.
+
+```{r}
+show_tbl("06_by_size_quintile", decimals = 3)
+```
+
+```{r}
+#| fig-cap: "Drawdown depth by size quintile, by series (winsorized within series)."
+knitr::include_graphics(fig("06_by_size_quintile"))
+```
+
+---
+
+*Reproduce:* run `code/40_construct_resilience.R` (builds `<entity>_recovery.rds`) then
+`code/65_recovery_descriptives.R` to (re)generate the artifacts, then
+`quarto render analysis/recovery_descriptives.qmd`.

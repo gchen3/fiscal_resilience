@@ -1,7 +1,7 @@
 # master.R
 # Top-level workflow driver. Runs the pipeline stages in order.
 # Numbering is banded by tens (gaps left for inserting new stages without renumbering):
-#   00 setup | 10 import | 20 clean | 30 merge | 40-50 construct | 60 descriptives |
+#   00 setup | 10 import | 20 clean | 30 merge | 40-50 construct | 60-65 descriptives |
 #   70-75 model | 90 output.
 # Uncomment stages as they are implemented. Each stage reads its inputs from disk and
 # writes its outputs to disk, so stages can also be run individually — EXCEPT 30_merge.R,
@@ -16,12 +16,13 @@ source('code/00_library.R')
 # source('code/30_merge.R')         # merge               -> data/processed_data/*_data_merged.rds
 
 # --- Construction ---------------------------------------------------------------
-# source('code/40_construct_resilience.R')  # DV1+DV2 (city/county/town) -> *_resilience.rds
+# source('code/40_construct_resilience.R')  # DV1/DV2/DV4 + DV3 -> *_resilience.rds, *_recovery.rds
 # source('code/45_construct_predictors.R')  # explanatory vars -> *_predictors.rds [stub]
 # source('code/50_assemble_panel.R')        # join        -> analysis_panel.rds  [stub]
 
 # --- Descriptives ---------------------------------------------------------------
-# source('code/60_descriptives.R')  # summary stats / gt tables
+# source('code/60_descriptives.R')           # resilience-outcome (DV2) summary stats / gt tables
+# source('code/65_recovery_descriptives.R')  # DV3 shock-recovery descriptives
 
 # --- Models ---------------------------------------------------------------------
 # source('code/70_model_main.R')        # main specifications              [stub]

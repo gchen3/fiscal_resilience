@@ -57,4 +57,7 @@ both older and newer OSC schema conventions (`financial_statement_segment` and
 - Long-run gaps require at least eight positive observations for an entity-specific trend.
 - Peer-relative sensitivity is suppressed when fewer than five non-missing units exist in a
   `size_class x calendar_year` cell.
-- DV3, a shock recovery trajectory measure, is planned but not yet implemented.
+- DV3, a shock recovery trajectory measure (drawdown depth + time-to-recover around the 2009 and
+  2020 shocks), is built at a separate **entity × shock × series** grain in
+  `<entity>_recovery.rds` — see `transparency/variable_registry.md` (DV3 section) and
+  `plan_docs/03_recovery_variable_plan.md`. Target series are CPI-U-deflated to real dollars.

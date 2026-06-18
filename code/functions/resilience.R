@@ -3,8 +3,8 @@
 # See plan_docs/01_fiscal_resilience_dv_plan.md for the full specification.
 # Definitions only — no side effects, no I/O. Sourced by 00_library.R.
 # Built: DV1 (fund-balance buffer), DV2 (operating expenditure-gap sensitivity),
+# DV3 (shock recovery trajectory: drawdown + time-to-recover, entity x shock),
 # DV4 (revenue-side gap sensitivity: total / own-source / tax).
-# Planned (stub below): DV3 (shock recovery trajectory).
 
 # Object classes that make up CURRENT OPERATING expenditure (DV2 base): excludes
 # equipment & capital outlay, debt principal/interest, and interfund transfers.
@@ -263,6 +263,105 @@ build_resilience <- function(raw, entity_label = NA_character_, fund = "A",
     dplyr::arrange(entity_name, municipal_code, calendar_year)
 }
 
-# ---- DV3 (planned — see plan §8) ------------------------------------------------------
-# build_recovery_trajectory(): drawdown depth + time-to-recovery around shock years
-#   (2009, 2020). Needs fixed shock dates/windows and right-censoring handling.
+# ---- DV3: shock recovery trajectory (plan_docs/03_recovery_variable_plan.md) ----------
+# Event study at entity x shock grain (NOT entity-year). For each unit and shock year t0,
+# measure how far a target series Y fell below its pre-shock baseline and how long it took
+# to return. Operates on an already-built *_resilience.rds panel (one `series_col`), so no
+# raw pass. Deflate first: pass `deflator` = data.frame(calendar_year, price_index) to put
+# Y in real dollars before computing depth/recovery (plan §4.2 / §8 — CPI-U).
+#
+#   panel       entity-year table with entity_name, municipal_code, calendar_year, series_col
+#   series_col  the bare column to track (e.g. available_fb, rev_own, gf_operating_exp)
+#   shocks      shock years t0 (default GFC 2009, COVID 2020); extensible (FEMA later)
+#   pre         baseline = mean of Y over [t0-pre, t0-1]
+#   window      track recovery over [t0, t0+window]
+#   horizon     fixed-horizon recovery ratio Y_{t0+horizon} / baseline
+#   deflator    optional (calendar_year, price_index); Y_real = Y / price_index
+#
+# `relative` controls the depth scale (and what makes a baseline usable):
+#   relative = TRUE  (dollar series, e.g. rev_own): drawdown = max(0,(B-minY)/B) PROPORTIONAL,
+#     recovery_ratio = Y_h/B. Requires B > 0 (a large positive $ scale); deflate first.
+#   relative = FALSE (an already-normalized ratio, e.g. available_fb_ratio): drawdown =
+#     max(0, B-minY) in LEVEL units (ratio points), recovery_ratio = Y_h - B (signed level gap
+#     at the horizon). No B>0 requirement and no deflation — a ratio is already real, and a
+#     proportional depth would explode for cities with near-zero reserves.
+#
+# Returns one row per unit x shock: baseline, drawdown, trough_year, recovery_years (first
+# k>=0 with Y>=baseline; NA if not recovered in window), recovered, censored (window exhausted
+# without recovery while still in-panel), recovery_ratio.
+build_recovery_trajectory <- function(panel, series_col,
+                                      shocks = c(2009, 2020),
+                                      pre = 3, window = 6, horizon = 4,
+                                      deflator = NULL, relative = TRUE) {
+  d <- panel %>%
+    dplyr::select(entity_name, municipal_code, calendar_year, y = {{ series_col }})
+  if (!is.null(deflator)) {
+    d <- d %>%
+      dplyr::left_join(deflator[c("calendar_year", "price_index")], by = "calendar_year") %>%
+      dplyr::mutate(y = .data$y / .data$price_index) %>%
+      dplyr::select(-"price_index")
+  }
+
+  na_row <- function(t0) tibble::tibble(
+    shock = t0, baseline = NA_real_, drawdown = NA_real_, trough_year = NA_integer_,
+    recovery_years = NA_integer_, recovered = NA, censored = NA, recovery_ratio = NA_real_)
+
+  purrr::map_dfr(shocks, function(t0) {
+    d %>%
+      dplyr::group_by(entity_name, municipal_code) %>%
+      dplyr::group_modify(~ {
+        x  <- .x
+        yr <- x$calendar_year
+        B  <- mean(x$y[yr %in% (t0 - pre):(t0 - 1)], na.rm = TRUE)
+        post <- x[yr >= t0 & yr <= t0 + window & is.finite(x$y), ]
+        usable <- if (relative) is.finite(B) && B > 0 else is.finite(B)
+        if (!usable || nrow(post) == 0) return(na_row(t0))
+        shortfall <- B - min(post$y)                         # level shortfall (<0 if no dip)
+        depth  <- if (relative) max(0, shortfall / B) else max(0, shortfall)
+        rec_yr <- post$calendar_year[post$y >= B]
+        k      <- if (length(rec_yr)) as.integer(min(rec_yr) - t0) else NA_integer_
+        yh     <- x$y[yr == t0 + horizon]
+        rratio <- if (length(yh) && is.finite(yh)) {
+          if (relative) yh / B else yh - B
+        } else NA_real_
+        tibble::tibble(
+          shock          = t0,
+          baseline       = B,
+          drawdown       = depth,
+          trough_year    = post$calendar_year[which.min(post$y)],
+          recovery_years = k,
+          recovered      = !is.na(k),
+          # not recovered, but the window ran past the last observed year => right-censored
+          censored       = is.na(k) && max(post$calendar_year) >= max(yr[is.finite(x$y)]),
+          recovery_ratio = rratio)
+      }) %>%
+      dplyr::ungroup()
+  })
+}
+
+# DV3 target spec: which panel series to track, the depth scale, and whether to deflate.
+# Reserves use the bounded `available_fb_ratio` (level / ratio-point depth, no deflation, since
+# a ratio is already real and proportional depth explodes for near-zero reserves); the dollar
+# flows use proportional depth on CPI-U-deflated real dollars (plan_docs/03 §3).
+recovery_targets_default <- tibble::tribble(
+  ~series,              ~relative, ~metric_scale,
+  "available_fb_ratio", FALSE,     "ratio_points",
+  "rev_own",            TRUE,      "proportional",
+  "gf_operating_exp",   TRUE,      "proportional"
+)
+
+# Build all DV3 targets for one entity's resilience panel into one stacked entity x shock x
+# series table (carries `metric_scale` and the static `size_class`). `deflator` is applied
+# only to the relative (dollar) targets.
+build_entity_recovery <- function(res, entity_label, deflator = NULL,
+                                  targets = recovery_targets_default) {
+  size_map <- dplyr::distinct(res, entity_name, municipal_code, size_class)
+  purrr::pmap_dfr(targets, function(series, relative, metric_scale) {
+    build_recovery_trajectory(res, !!rlang::sym(series),
+                              deflator = if (relative) deflator else NULL,
+                              relative = relative) %>%
+      dplyr::mutate(series = series, metric_scale = metric_scale, .after = "municipal_code")
+  }) %>%
+    dplyr::left_join(size_map, by = c("entity_name", "municipal_code")) %>%
+    dplyr::mutate(entity_type = entity_label, .before = 1)
+}

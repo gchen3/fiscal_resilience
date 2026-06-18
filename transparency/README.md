@@ -10,6 +10,8 @@ the raw OSC source data without reading the code.
   for the main fiscal-resilience dependent variables.
 - [`model_registry.md`](model_registry.md) - every statistical model / estimation, its
   specification, sample, and the source variables it depends on.
+- [`reference_sources.md`](reference_sources.md) - provenance for external reference series
+  (e.g. the CPI-U deflator) whose data files are gitignored.
 
 These files are **hand-maintained**. When variable-producing scripts (`code/20_clean.R`,
 `code/40_construct_resilience.R`, `code/45_construct_predictors.R`) or model scripts
