@@ -5,24 +5,43 @@ resilience from a resource-based view: Evidence from US state governments*, Publ
 Review 24(12): 1980–2003 (PDF: `resources/5.LeeChen-2022-PMR.pdf`, local/gitignored) — extended
 to use the **object-class, fund, and balance-sheet detail** in the raw OSC data.
 
-## 1. Objective and headline decisions
+## 1. Objective, analytic framing, and variable roles
 
-Build fiscal **resilience** dependent variables for NYS local governments from the **raw** OSC
-files. Four DV families capture distinct facets of resilience:
+Build fiscal **resilience** measures for NYS local governments from the **raw** OSC files, in the
+resource-based-view / dynamic-capabilities framing of Lee & Chen (2022): **resources and capacity
+let a government keep public services (expenditures) stable when revenue shocks hit.**
 
-- **DV1 — Fund-balance buffer:** unreserved/unassigned **General Fund** balance ÷ expenditures
-  (capacity to absorb shocks). *Higher = more resilient.*
-- **DV2 — Expenditure-gap sensitivity** (Lee & Chen): volatility of **General Fund current
-  operating** expenditure, in an **absolute** form (retains common shocks) and the paper's
-  **peer-relative** form. *Lower = more resilient.*
-- **DV3 — Shock recovery trajectory** (planned): depth of drawdown and time-to-recovery around
-  defined shocks (2009, 2020). Captures *bounce-back*, the README's framing. *Shallow + fast = resilient.*
-- **DV4 — Revenue-side resilience** (planned): DV2's gap/sensitivity applied to General Fund
-  revenues (and own-source/tax revenue) — the tax-base shock channel.
+**Analytic roles (revised 2026-06-17 — see the descriptive findings in
+`plan_docs/02_descriptive_statistics_plan.md` and the PCA showing buffer ⟂ volatility).** All four
+quantities below are still *constructed* in `40_construct_resilience.R` from the same raw General
+Fund pass; what changed is their **role** in the analysis:
 
-Decisions locked in: **fund scope = General Fund (account-code letter `A`) only**; operating
-base defined by **object class**; long-run trend **log-linear**; prototype on **cities** then
-generalize. DV1/DV2 are built first; DV3/DV4 are planned extensions (method sketched in §8–§9).
+- **Resilience OUTCOME (dependent variable):**
+  - **Expenditure-side stability** — the **absolute** General Fund operating expenditure gap /
+    sensitivity (§7, "DV2"). *Lower = more resilient* (better at maintaining services). This is the
+    **headline DV** (Lee & Chen "maintain status quo"; direction-neutral, so a prudent cut and an
+    overshoot both count as instability).
+  - **Shock recovery** — drawdown depth + time-to-recovery around shocks (§8, "DV3"). This is the
+    **signed / downside** home for "did services get cut, how deep, did they rebuild" — done
+    rigorously with a shock anchor and a real/detrended baseline, *not* a raw signed year-over-year
+    change (nominal growth would swamp it; a cut is not unambiguously a failure).
+- **Stressor / exposure (predictor):** **revenue volatility** — the GF revenue gaps (§9, "DV4",
+  esp. own-source/tax). The revenue→expenditure link is partly mechanical (budget constraint), so
+  the resilience signal is the **pass-through**: a resilient city absorbs a revenue shock *without*
+  cutting spending.
+- **Resource / capacity (predictor):** **fund-balance level** — `fb_ratio` / `available_fb_ratio`
+  (§6, "DV1"). A *stock of slack*, used as a **resource/moderator**, not an outcome (as in Lee &
+  Chen). Joins the structural predictors built in `45_construct_predictors.R`.
+
+**Core hypothesis / model:** expenditure stability is explained by the interaction
+**revenue shock × resources (buffer, capacity)** — low pass-through (stable spending despite
+revenue swings) = resilient. The fund-balance buffer is a *moderator* of that pass-through.
+
+Construction decisions locked in: **fund scope = General Fund (account-code letter `A`) only**;
+operating base defined by **object class**; long-run trend **log-linear**; prototype on **cities**
+then generalize. The expenditure-stability DV and the fund-balance/revenue predictors are built;
+recovery (§8) is the remaining piece. The "DV1–DV4" labels below are retained as *construction*
+IDs; their analytic roles are as assigned here.
 
 ## 2. Key finding: the raw data is far richer than the merged tables
 
@@ -81,14 +100,14 @@ not an artifact.
 
 ## 5. Adaptation summary
 
-| Paper (Lee & Chen 2022) | This project |
-|---|---|
-| 50 US states, FY2002–2017 | NYS cities/counties/towns/school districts, FY1995–2025 |
-| Unit = state | Unit = entity (`entity_name` + `municipal_code`) |
-| All-fund object-class total | **General Fund (`A`)**, **current operating** via object class |
-| Single relative DV | **DV1** buffer + **DV2** exp. gap + **DV3** recovery + **DV4** revenue gap |
-| Level-linear trend | **Log-linear** trend |
-| Reference = national avg/year | **Entity type × size class × year** |
+| Paper (Lee & Chen 2022)       | This project                                                               |
+| -------------------------------| ----------------------------------------------------------------------------|
+| 50 US states, FY2002–2017     | NYS cities/counties/towns/school districts, FY1995–2025                    |
+| Unit = state                  | Unit = entity (`entity_name` + `municipal_code`)                           |
+| All-fund object-class total   | **General Fund (`A`)**, **current operating** via object class             |
+| Single relative DV            | **DV1** buffer + **DV2** exp. gap + **DV3** recovery + **DV4** revenue gap |
+| Level-linear trend            | **Log-linear** trend                                                       |
+| Reference = national avg/year | **Entity type × size class × year**                                        |
 
 ## 6. DV1 — Fund-balance buffer
 

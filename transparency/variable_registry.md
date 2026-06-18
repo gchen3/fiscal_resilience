@@ -267,11 +267,19 @@ every entity. The **Entities** column records where each variable is present.
 
 ## Derived / analysis variables
 
-Resilience dependent variables, built in `code/40_construct_resilience.R` (functions in
+Resilience variables, built in `code/40_construct_resilience.R` (functions in
 `code/functions/resilience.R`) from the **raw** `data/OSC/<entity>_data_all.rds`, restricted to
 the **General Fund** (account-code letter `A`). Spec: `plan_docs/01_fiscal_resilience_dv_plan.md`.
 Entity-year keys: `calendar_year`, `entity_name`, `municipal_code`. Built for cities (validated),
 counties, and towns; schools pending General-Fund-code verification. FY2025 dropped (incomplete).
+
+**Analytic roles (revised 2026-06-17, `plan_docs/01` §1):** the **resilience OUTCOME (DV)** is
+**expenditure-side stability** — the absolute operating expenditure gaps (`exp_gap_sr/lr`) and
+their peer-relative sensitivities (`sensitivity_sr/lr`); recovery (DV3) is the planned downside
+outcome. **Fund-balance level** (`fb_ratio`, `available_fb_ratio`) is a **resource/predictor**
+(buffer/moderator), and **revenue volatility** (`rev_*_gap_*`) is a **stressor/exposure
+predictor** — both are inputs to the model, not outcomes. All are still computed here; the role
+labels (not the formulas) are what changed.
 
 | Variable | Definition / formula | Source rows (General Fund) | Created in | Date added |
 |---|---|---|---|---|
