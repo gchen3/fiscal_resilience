@@ -24,6 +24,9 @@
 *.html
 *_files/
 
+# Generated descriptive/analysis artifacts (regenerate via code/60_descriptives.R etc.)
+outputs/
+
 # Reference PDFs (published papers etc.) — keep local, not in git history
 *.pdf
 
