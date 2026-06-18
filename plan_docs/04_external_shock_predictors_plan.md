@@ -1,7 +1,8 @@
 # Plan: External Shock Measurements (predictors / exposure)
 
 Builds **entity-year external-shock indicators** — the *stressor / exposure* side of the
-resilience model (`plan_docs/01_fiscal_resilience_dv_plan.md` §1). These are **predictors**, not
+resilience model (framing in `plan_docs/01_fiscal_resilience_dv_plan.md` §1; the continuous
+revenue-volatility / buffer predictors are in `plan_docs/05_predictor_variables_plan.md`). These are **predictors**, not
 outcomes: they capture *what hit the government from outside*, against which the resilience DVs
 (buffer, expenditure stability, recovery) are evaluated.
 
@@ -21,7 +22,7 @@ joined into the modeling panel by `code/50_assemble_panel.R`.
 | **Threshold rule (A & B)** | **Fixed real-decline cutoff** (resolved): flag = 1 if real YoY decline exceeds a fixed %. Defaults **own/tax −5%**, **aid −10%**. Interpretable + comparable across entities. (Distributional/entity-relative kept only as an optional robustness variant.) |
 | **Geo mapping (C & D)** | **Derived from OSC data** (resolved) — every entity already carries a populated `COUNTY` field (**verified** 1995/2005/2020, all types incl. county entities, **0 blanks**). No owner crosswalk needed. Claude adds a static county-name→FIPS lookup (62 NY counties) to join FEMA/BLS. |
 | **Data provision** | Owner provides: FEMA declarations, BLS county unemployment. Claude derives entity→county from OSC `COUNTY`, builds the NY county-FIPS table, and sources NBER recession years (public, hard-coded). |
-| **Scope/sequencing** | Prototype on **cities** (as the DVs did), then county/town; school deferred (`plan_docs/01` §12). |
+| **Scope/sequencing** | Prototype on **cities** (as the DVs did), then county/town; school deferred (`plan_docs/01` §9). |
 
 A shock is *external* = not a direct discretionary choice of the government. Revenue and aid
 declines are the **downside tail** of the (mostly exogenous) tax base / state-budget environment;
@@ -53,7 +54,7 @@ The build derives a one-row-per-entity lookup `(municipal_code, entity_name, ent
 and joins a static **`data/reference/ny_county_fips.csv`** (62 rows, `county_name`, `county_fips`,
 built by Claude from the published NY FIPS list) to get the `county_fips` join key for FEMA/BLS.
 School districts can span counties; OSC assigns one primary county — acceptable, and schools are
-deferred anyway (`plan_docs/01` §12).
+deferred anyway (`plan_docs/01` §9).
 
 ## 3b. Data the project owner provides (exact specs)
 
@@ -204,7 +205,8 @@ band grows multi-source, promote to a `45_predictors/` subfolder per the stub's 
 
 ## 9. References
 
-- `plan_docs/01_fiscal_resilience_dv_plan.md` §1 (stressor/exposure role), §9 (revenue bases),
-  §14 (downstream link); `plan_docs/03_recovery_variable_plan.md` (2009/2020 anchors, deflator).
+- `plan_docs/01_fiscal_resilience_dv_plan.md` §1 (resilience framing), §11 (downstream link);
+  `plan_docs/05_predictor_variables_plan.md` §2 (revenue bases, stressor role);
+  `plan_docs/03_recovery_variable_plan.md` (2009/2020 anchors, deflator).
 - FEMA OpenFEMA — Disaster Declarations Summaries. BLS LAUS — county annual unemployment.
   NBER US business cycle expansions and contractions. Lee & Chen (2022).

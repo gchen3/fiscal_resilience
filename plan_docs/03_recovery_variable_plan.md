@@ -2,7 +2,8 @@
 
 Constructs the **bounce-back** resilience outcome (README's verb) that DV1/DV2/DV4 do not
 capture: how deep a shock pushed a city below its pre-shock baseline and how long it took to
-return. Specified in `plan_docs/01_fiscal_resilience_dv_plan.md` §8 (the `DV3` construction ID);
+return. The recovery construction spec lives here (resilience framing in
+`plan_docs/01_fiscal_resilience_dv_plan.md` §1);
 this document is the build-level plan. Helpers go in `code/functions/resilience.R` (the stub at
 its end), driven from `code/40_construct_resilience.R`.
 
@@ -11,7 +12,7 @@ its end), driven from `code/40_construct_resilience.R`.
 DV1/DV2/DV4 are **entity-year**. Recovery is an **event study**: the grain is **entity × shock**,
 with its own baseline, window, and right-censoring logic. So DV3 is **not** another entity-year
 column — it is a separate table (`<entity>_recovery.rds`) that joins to the modeling panel as
-**event-time records** (matches the COVID/disaster framing in `plan_docs/01` §14).
+**event-time records** (matches the COVID/disaster framing in `plan_docs/01` §11).
 
 DV2 (absolute expenditure gap) measures *volatility*, direction-neutral; DV3 is the **signed /
 downside** home for "did services get cut, how deep, did they rebuild" — anchored to a shock and a
@@ -50,16 +51,48 @@ metric on `gf_operating_exp` is near-zero depth / instant recovery and uninforma
 
 Build the function **series-agnostic** (one `series_col` argument) and run it on all three.
 
+**Recovery descriptive framing — resolved 2026-06-18** (mirrors the outcome/predictor split in
+`analysis/resilience_descriptives.qmd`). Construction is unchanged — all three series are still
+built into `<entity>_recovery.rds`; what changed is what the recovery **descriptive report**
+features:
+- **Featured outcomes:** **reserves** (`available_fb_ratio`) as the headline bounce-back (the only
+  series that genuinely draws down then rebuilds), plus **operating expenditure**
+  (`gf_operating_exp`) as a *held-steady contrast* (sticky spending = services protected).
+  Operating-expenditure recovery is near-degenerate alone, so it is a contrast, not a standalone
+  outcome.
+- **Own-source revenue (`rev_own`) is excluded** from the recovery report and moves to the
+  predictor / stressor side (revenue = stressor).
+- **Headline metrics = three:**
+  1. `drawdown` (depth — how deep the dip below baseline),
+  2. `recovery_years` (speed — years to climb back to baseline),
+  3. **one-year recovery ratio** (short-term rebound = level one year post-shock vs baseline:
+     `Y_{t0+1}/B` for flows, `Y_{t0+1} − B` for reserves). Observable for *both* shocks (2010 and
+     2021 are in-panel), so it complements `recovery_years`, which is largely censored for COVID.
+  `recovered` / `censored` are reported as status flags; the 4-year `recovery_ratio`, `baseline`,
+  and `trough_year` stay in the data but are dropped from the writeup.
+- Whether reserves carry the recovery outcome depends on the still-open fund-balance role; in the
+  recovery facet reserves act as the thing that recovers, which does not conflict with the
+  fund-balance *level* being a resource/moderator in the stability model.
+
+**Terminology for reader-facing files (qmd — audience is outside collaborators):** call the 2009
+shock the **Great Recession (GR)** (not GFC), and **avoid the internal DV1–DV4 codes** entirely
+(use plain language: "recovery", "expenditure stability", "reserves buffer", "revenue
+volatility"). Plan files (this doc) may keep the shorthand.
+
+> *Note — small construction add for metric 3:* the current builder returns one `recovery_ratio`
+> at `horizon = 4`; the one-year ratio needs the value at `t0+1`. Add a `horizon = 1` evaluation
+> (e.g. `recovery_ratio_1yr`) when the build is next touched — deferred until implementation.
+
 ## 4. Decisions (resolved 2026-06-17)
 
 All five settled; defaults below are what the build uses.
 
 1. **Baseline `B` — pre-shock mean of `t0-3 … t0-1`** (primary). Robust, no look-ahead, short
    pre-period OK. **Robustness variant = log-trend prediction at `t0`** (reuses the DV2 log-trend
-   machinery; carries the in-sample look-ahead caveat from `plan_docs/01` §7).
+   machinery; carries the in-sample look-ahead caveat from `plan_docs/01` §5).
 2. **Deflation — CPI-U (annual, national).** Deflate `Y` to real dollars **before** computing
    depth/recovery — otherwise ~2-3%/yr inflation, and the ARPA-driven 2021->2023 fund-balance
-   surge (`plan_docs/01` §4), masquerade as recovery. **No price index exists in the repo
+   surge (`plan_docs/05` §1), masquerade as recovery. **No price index exists in the repo
    (verified)**, so one is created; CPI-U chosen over the BEA state/local deflator for sourcing
    simplicity (the choice does not change the resilience ranking; BEA noted as a robustness
    option). See §8. Per-capita is a later refinement (Census population).
@@ -142,7 +175,8 @@ recov <- dplyr::bind_rows(
 readr::write_rds(recov, here::here("data", "processed_data", "city_recovery.rds"))
 ```
 
-Output grain = `entity × shock × series`; column names follow `plan_docs/01` §10
+Output grain = `entity × shock × series`; column names are self-contained here (and registered in
+`transparency/variable_registry.md`)
 (`recovery_drawdown_<series>`, `recovery_years_<series>`, plus `recovered` / `censored` /
 `recovery_ratio_<series>`). It joins to the modeling panel as **event-time** records (entity ×
 shock), not back onto entity-year.
@@ -172,7 +206,7 @@ no nominal recovery numbers are reported.
   everywhere, the baseline/deflation is wrong.
 - **COVID** rows: expect high `censored = TRUE` share on `recovery_years`; `drawdown` and
   `recovery_ratio` still populated. ARPA surge should make many `available_fb` recovery_ratios > 1
-  (over-recovery) — sanity-check against the $651M->$1.25B city surge in `plan_docs/01` §4.
+  (over-recovery) — sanity-check against the $651M->$1.25B city surge in `plan_docs/05` §1.
 - **Operating-expenditure** drawdowns should be **shallow** vs revenue/fund-balance (confirms the
   sticky-spending finding and the pass-through framing).
 - Report share of `NA` DV3 (too-short pre-period, missing base, zero baseline) and the
@@ -194,7 +228,7 @@ every series (Spearman ≈ 0.40–0.63 — deeper drawdowns rebuild more slowly)
 ## 10. Scope / sequencing
 
 Prototype on **cities**, then generalize to county/town (school deferred with the rest of DV
-construction — `plan_docs/01` §12 fund-identifier caveat). DV3 is the **last** resilience-outcome
+construction — `plan_docs/01` §9 fund-identifier caveat). DV3 is the **last** resilience-outcome
 piece; DV1/DV2/DV4 are built. Build order: (1) **deflator resolved (§8: CPI-U)** — populate
 `data/reference/price_index.csv` from BLS, (2) implement `build_recovery_trajectory()` + driver,
 (3) validate per §9, (4) register variables, (5) add a DV3 section to the descriptive report
@@ -202,6 +236,6 @@ piece; DV1/DV2/DV4 are built. Build order: (1) **deflator resolved (§8: CPI-U)*
 
 ## 11. References
 
-- `plan_docs/01_fiscal_resilience_dv_plan.md` §8 (DV3 spec), §4 (usable window / ARPA surge), §14
-  (event-time downstream link).
+- `plan_docs/01_fiscal_resilience_dv_plan.md` §1 (resilience framing), §4 (usable window), §11
+  (event-time downstream link); ARPA fund-balance surge in `plan_docs/05` §1.
 - Lee & Chen (2022) — resilience-as-recovery framing (PDF `resources/5.LeeChen-2022-PMR.pdf`).
