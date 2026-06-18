@@ -1,12 +1,15 @@
 # 60_descriptives.R
-# Descriptive statistics for the resilience dependent variables (cities, 1995-2023).
+# Descriptive statistics for the RESILIENCE OUTCOME variables (cities, 1995-2023).
 # Spec: plan_docs/02_descriptive_statistics_plan.md   Helpers: code/functions/descriptives.R
 #
-# Reads:  data/processed_data/city_resilience.rds  (run 40_construct_resilience.R first)
-# Writes: outputs/descriptives/{tables,figures}/   (gt .html + .csv tables; .png/.pdf figures)
+# Scope: the Lee & Chen (2022) expenditure sensitivity measure ONLY — the resilience DV.
+#   building blocks: exp_gap_sr, exp_gap_lr   |   DV: sensitivity_sr, sensitivity_lr
+# EXCLUDES the fund-balance predictor (fb_*) and the revenue-volatility stressor (rev_*) —
+# those get their own descriptives with the predictors.
 #
-# Headline window 1995-2023 (FY2024 partial, FY2025 dropped). Cities only this pass.
-# Figures winsorized at 1/99; tables and stored DVs raw. Correlation default = Spearman.
+# Reads:  data/processed_data/city_resilience.rds  (run 40_construct_resilience.R first)
+# Writes: outputs/descriptives/{tables,figures}/   (01-06 sections; gt .html + .csv; .png/.pdf)
+# Headline window 1995-2023 (FY2024 partial, FY2025 dropped). Figures winsorized 1/99.
 
 suppressMessages({library(ggplot2)})
 
@@ -15,33 +18,26 @@ in_path  <- if (exists(".desc_in_path"))  get(".desc_in_path")  else here::here(
 out_root <- if (exists(".desc_out_root")) get(".desc_out_root") else here::here("outputs", "descriptives")
 tab_dir  <- file.path(out_root, "tables")
 fig_dir  <- file.path(out_root, "figures")
-for (d in c(tab_dir, fig_dir)) if (!dir.exists(d)) dir.create(d, recursive = TRUE)
+
+# Start clean so stale artifacts (old T*/F*, predictor/stressor outputs) don't linger.
+if (dir.exists(out_root)) unlink(out_root, recursive = TRUE)
+for (d in c(tab_dir, fig_dir)) dir.create(d, recursive = TRUE)
 
 # ---- Load & restrict sample -----------------------------------------------------------
 res <- readr::read_rds(in_path) %>%
-  dplyr::filter(calendar_year >= 1995, calendar_year <= 2023) %>%   # headline window
-  dplyr::mutate(decade = paste0(floor(calendar_year / 10) * 10, "s"))
+  dplyr::filter(calendar_year >= 1995, calendar_year <= 2023)        # headline window
 
-# ---- Variable groups ------------------------------------------------------------------
-ratios   <- c("fb_ratio", "available_fb_ratio")
-exp_abs  <- c("exp_gap_sr", "exp_gap_lr")
-exp_rel  <- c("sensitivity_sr", "sensitivity_lr")
-rev_abs  <- c("rev_total_gap_sr", "rev_total_gap_lr", "rev_own_gap_sr",
-              "rev_own_gap_lr", "rev_tax_gap_sr", "rev_tax_gap_lr")
-rev_rel  <- c("rev_total_sens_sr", "rev_total_sens_lr", "rev_own_sens_sr",
-              "rev_own_sens_lr", "rev_tax_sens_sr", "rev_tax_sens_lr")
-bases    <- c("gf_total_exp", "gf_operating_exp", "rev_total", "rev_own", "rev_tax")
-
-dv_all    <- c(ratios, exp_abs, exp_rel, rev_abs, rev_rel)
-corr_vars <- c(ratios, exp_abs, rev_abs)                 # exclude mechanical sensitivities
-rep_vars  <- c("fb_ratio", "exp_gap_sr", "rev_total_gap_sr", "rev_own_gap_sr")  # for figures
-
-# Sign-alignment for PCA: buffers +1 (higher = resilient), gaps -1 (lower = resilient).
-pca_sign <- stats::setNames(ifelse(corr_vars %in% ratios, 1, -1), corr_vars)
+# ---- Resilience-outcome variable set (Lee & Chen sensitivity) -------------------------
+resil_vars <- c("exp_gap_sr", "exp_gap_lr", "sensitivity_sr", "sensitivity_lr")
+var_labels <- c(exp_gap_sr = "Short-run expenditure gap",
+                exp_gap_lr = "Long-run expenditure gap",
+                sensitivity_sr = "Short-run sensitivity (DV)",
+                sensitivity_lr = "Long-run sensitivity (DV)")
+nice <- function(v) factor(v, levels = resil_vars, labels = var_labels[resil_vars])
 
 # ---- Output helpers -------------------------------------------------------------------
-save_table <- function(summary_df, gt_obj, name) {
-  readr::write_csv(summary_df, file.path(tab_dir, paste0(name, ".csv")))
+save_table <- function(df, gt_obj, name) {
+  readr::write_csv(df, file.path(tab_dir, paste0(name, ".csv")))
   try(gt::gtsave(gt_obj, file.path(tab_dir, paste0(name, ".html"))), silent = TRUE)
 }
 save_fig <- function(plot, name, w = 9, h = 6) {
@@ -50,141 +46,109 @@ save_fig <- function(plot, name, w = 9, h = 6) {
 }
 
 # ======================================================================================
-# TABLES
+# 01 — DEFINITIONS
 # ======================================================================================
-
-# T1 — headline DV summary (ratios, gaps, sensitivities).
-t1 <- describe_vars(res, dv_all)
-save_table(t1, gt_summary_table(
-  t1, "T1. Resilience DVs — summary (cities, 1995-2023)",
-  "Mean/SD lead; median + quartiles for skew. Note: *_sens_* average ~1 by construction."),
-  "T1_headline_summary")
-
-# T1b — dollar bases (in $ millions).
-res_m <- res %>% dplyr::mutate(dplyr::across(dplyr::all_of(bases), ~ .x / 1e6))
-t1b <- describe_vars(res_m, bases)
-save_table(t1b, gt_summary_table(t1b, "T1b. General Fund $ bases ($ millions)", decimals = 1),
-           "T1b_dollar_bases")
-
-# T2 — key DVs by decade.
-t2 <- describe_vars(res, rep_vars, by = "decade")
-save_table(t2, gt_summary_table(t2, "T2. Key resilience DVs by decade"), "T2_by_decade")
-
-# T3 — fund-balance detail + deficit share, overall and by decade.
-t3 <- res %>%
-  dplyr::group_by(decade) %>%
-  dplyr::summarise(
-    n              = sum(!is.na(fb_ratio)),
-    mean_fb_ratio  = mean(fb_ratio, na.rm = TRUE),
-    median_fb_ratio= stats::median(fb_ratio, na.rm = TRUE),
-    deficit_share  = deficit_share(fb_ratio),
-    mean_available = mean(available_fb_ratio, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  dplyr::bind_rows(dplyr::tibble(
-    decade = "ALL", n = sum(!is.na(res$fb_ratio)),
-    mean_fb_ratio = mean(res$fb_ratio, na.rm = TRUE),
-    median_fb_ratio = stats::median(res$fb_ratio, na.rm = TRUE),
-    deficit_share = deficit_share(res$fb_ratio),
-    mean_available = mean(res$available_fb_ratio, na.rm = TRUE)))
-t3_gt <- t3 %>% gt::gt() %>% gt::tab_header("T3. Fund-balance buffer & deficit share, by decade") %>%
-  gt::fmt_number(c(mean_fb_ratio, median_fb_ratio, mean_available), decimals = 3) %>%
-  gt::fmt_percent(deficit_share, decimals = 1) %>% gt::fmt_number(n, decimals = 0)
-save_table(t3, t3_gt, "T3_fund_balance_detail")
-
-# T4 — volatility comparison: absolute gaps, operating vs revenue bases (short-run).
-t4 <- describe_vars(res, c("exp_gap_sr", "rev_total_gap_sr", "rev_own_gap_sr", "rev_tax_gap_sr"))
-save_table(t4, gt_summary_table(
-  t4, "T4. Volatility comparison (short-run absolute gaps): operating vs revenue"),
-  "T4_volatility_comparison")
-
-# T6 — correlations (pooled / between / within), Spearman + Pearson (pooled appendix).
-cor_s <- correlation_sets(res, corr_vars, method = "spearman")
-cor_p <- correlation_sets(res, corr_vars, method = "pearson")
-for (nm in names(cor_s))
-  readr::write_csv(tibble::as_tibble(round(cor_s[[nm]], 3), rownames = "variable"),
-                   file.path(tab_dir, paste0("T6_spearman_", nm, ".csv")))
-readr::write_csv(tibble::as_tibble(round(cor_p$pooled, 3), rownames = "variable"),
-                 file.path(tab_dir, "T6_pearson_pooled.csv"))
-t6_gt <- tibble::as_tibble(cor_s$pooled, rownames = "variable") %>% gt::gt() %>%
-  gt::tab_header("T6. Spearman correlations (pooled)",
-                 "Between/within variants in T6_spearman_{between,within}.csv") %>%
-  gt::fmt_number(columns = -variable, decimals = 2)
-save_table(tibble::as_tibble(round(cor_s$pooled, 3), rownames = "variable"), t6_gt, "T6_spearman_pooled")
-
-# T7 — PCA loadings + variance explained (sign-aligned, normal-scored, sensitivities excluded).
-pca <- resilience_pca(res, corr_vars, sign = pca_sign)
-load_tbl <- pca_loadings(pca, n_comp = 4)
-var_tbl  <- pca_variance(pca)
-readr::write_csv(var_tbl, file.path(tab_dir, "T7_pca_variance.csv"))
-t7_gt <- load_tbl %>% gt::gt() %>%
-  gt::tab_header("T7. PCA loadings (first 4 PCs)",
-                 paste0("N = ", pca$n, " entity-years; sign-aligned so higher = more resilient")) %>%
-  gt::fmt_number(columns = -variable, decimals = 3)
-save_table(load_tbl, t7_gt, "T7_pca_loadings")
+definitions <- tibble::tribble(
+  ~variable,         ~label,                        ~role,               ~direction,            ~definition,
+  "exp_gap_sr",      "Short-run expenditure gap",   "resilience (input)", "lower = resilient",  "Absolute year-over-year volatility of General Fund current-operating expenditure: |E_t - E_{t-1}| / E_{t-1}.",
+  "exp_gap_lr",      "Long-run expenditure gap",    "resilience (input)", "lower = resilient",  "Absolute deviation of GF operating expenditure from the unit's own log-linear trend: |E - E_hat| / E_hat.",
+  "sensitivity_sr",  "Short-run sensitivity",       "resilience (DV)",    "lower = resilient",  "Lee & Chen resilience DV: exp_gap_sr divided by its peer-group (size_class x year) mean. ~1 = typical; <1 more resilient.",
+  "sensitivity_lr",  "Long-run sensitivity",        "resilience (DV)",    "lower = resilient",  "Lee & Chen resilience DV: exp_gap_lr divided by its peer-group (size_class x year) mean."
+)
+def_gt <- definitions %>% gt::gt() %>%
+  gt::tab_header("01. Resilience-outcome variables — definitions",
+                 "Expenditure-side stability (Lee & Chen sensitivity). Predictors (fund balance) and stressors (revenue volatility) are described separately.")
+save_table(definitions, def_gt, "01_definitions")
 
 # ======================================================================================
-# FIGURES (winsorized display where noted)
+# 02 — CONSTRUCTION
 # ======================================================================================
-nice <- function(v) factor(v, levels = rep_vars)
+construction <- tibble::tribble(
+  ~variable,        ~formula,                                  ~source_rows,
+  "exp_gap_sr",     "|E_t - E_{t-1}| / E_{t-1} (consecutive yrs)", "GF (fund A) operating expenditure E = sum of objects {personal services, contractual, employee benefits}",
+  "exp_gap_lr",     "|E - E_hat| / E_hat ; E_hat = exp(fit of log(E) ~ year), >= 8 yrs", "same GF operating base, per-unit log-linear trend",
+  "sensitivity_sr", "exp_gap_sr / mean(exp_gap_sr in size_class x year), cells >= 5 units", "peer reference = size_class x year (adaptation of Lee & Chen's national-average-per-year)",
+  "sensitivity_lr", "exp_gap_lr / mean(exp_gap_lr in size_class x year)", "same peer reference"
+)
+scale_note <- res %>%
+  dplyr::summarise(median_gf_operating_exp_M = stats::median(gf_operating_exp, na.rm = TRUE) / 1e6)
+con_gt <- construction %>% gt::gt() %>%
+  gt::tab_header("02. Construction",
+                 paste0("General Fund, cities 1995-2023, NYC excluded by data. Scale: median GF operating expenditure ~ $",
+                        round(scale_note$median_gf_operating_exp_M, 1), "M."))
+save_table(construction, con_gt, "02_construction")
 
-# F1 — time series of mean DV by year, shocks marked.
-f1_df <- res %>% dplyr::group_by(calendar_year) %>%
-  dplyr::summarise(dplyr::across(dplyr::all_of(rep_vars), ~ mean(.x, na.rm = TRUE)), .groups = "drop") %>%
-  tidyr::pivot_longer(dplyr::all_of(rep_vars), names_to = "variable", values_to = "mean") %>%
-  dplyr::mutate(variable = nice(variable))
-f1 <- ggplot(f1_df, aes(calendar_year, mean)) +
-  geom_vline(xintercept = c(2009, 2020), linetype = "dashed", colour = "grey60") +
-  geom_line() + geom_point(size = 0.8) +
-  facet_wrap(~ variable, scales = "free_y") +
-  labs(title = "F1. Mean resilience DV by year (cities)", subtitle = "Dashed: 2009, 2020 shocks",
-       x = NULL, y = "Annual mean") + theme_minimal()
-save_fig(f1, "F1_time_series")
+# ======================================================================================
+# 03 — DESCRIPTIVE STATS + DISTRIBUTION
+# ======================================================================================
+s3 <- describe_vars(res, resil_vars)
+s3_gt <- gt_summary_table(
+  s3, "03. Resilience-outcome variables — summary (cities, 1995-2023)",
+  "Sensitivities average ~1 by construction; read their spread (SD, quartiles, max), not the mean.")
+save_table(s3, s3_gt, "03_summary_stats")
 
-# F2 — winsorized distributions.
-f2_df <- res %>% dplyr::select(dplyr::all_of(rep_vars)) %>%
+f3_df <- res %>% dplyr::select(dplyr::all_of(resil_vars)) %>%
   dplyr::mutate(dplyr::across(dplyr::everything(), winsorize)) %>%
   tidyr::pivot_longer(dplyr::everything(), names_to = "variable", values_to = "value") %>%
   dplyr::mutate(variable = nice(variable))
-f2 <- ggplot(f2_df, aes(value)) + geom_histogram(bins = 40) +
+f3 <- ggplot(f3_df, aes(value)) + geom_histogram(bins = 40) +
   facet_wrap(~ variable, scales = "free") +
-  labs(title = "F2. DV distributions (winsorized 1/99)", x = NULL, y = "Count") + theme_minimal()
-save_fig(f2, "F2_distributions")
+  labs(title = "03. Distributions (winsorized 1/99)", x = NULL, y = "Count") + theme_minimal()
+save_fig(f3, "03_distributions")
 
-# F3 — winsorized boxplots by size class.
-f3_df <- res %>% dplyr::filter(!is.na(size_class)) %>%
-  dplyr::select(size_class, dplyr::all_of(rep_vars)) %>%
-  dplyr::mutate(dplyr::across(dplyr::all_of(rep_vars), winsorize)) %>%
-  tidyr::pivot_longer(dplyr::all_of(rep_vars), names_to = "variable", values_to = "value") %>%
+# ======================================================================================
+# 04 — TIME SERIES
+# ======================================================================================
+f4_df <- res %>% dplyr::group_by(calendar_year) %>%
+  dplyr::summarise(dplyr::across(dplyr::all_of(resil_vars), ~ mean(.x, na.rm = TRUE)), .groups = "drop") %>%
+  tidyr::pivot_longer(dplyr::all_of(resil_vars), names_to = "variable", values_to = "mean") %>%
   dplyr::mutate(variable = nice(variable))
-f3 <- ggplot(f3_df, aes(factor(size_class), value)) + geom_boxplot(outlier.size = 0.5) +
+f4 <- ggplot(f4_df, aes(calendar_year, mean)) +
+  geom_vline(xintercept = c(2009, 2020), linetype = "dashed", colour = "grey60") +
+  geom_line() + geom_point(size = 0.8) +
   facet_wrap(~ variable, scales = "free_y") +
-  labs(title = "F3. DVs by size class (winsorized)", x = "Size class (1 = smallest)", y = NULL) +
-  theme_minimal()
-save_fig(f3, "F3_by_size_class")
+  labs(title = "04. Mean resilience-outcome variable by year (cities)",
+       subtitle = "Dashed: 2009, 2020 shocks. Operating spending is sticky (gaps stay low).",
+       x = NULL, y = "Annual mean") + theme_minimal()
+save_fig(f4, "04_time_series")
 
-# F5 — Spearman correlation heatmap.
-f5_df <- as.data.frame(as.table(cor_s$pooled))
-names(f5_df) <- c("v1", "v2", "rho")
+# ======================================================================================
+# 05 — CORRELATION (panel-aware: pooled / between / within)
+# ======================================================================================
+cor_s <- correlation_sets(res, resil_vars, method = "spearman")
+for (nm in names(cor_s))
+  readr::write_csv(tibble::as_tibble(round(cor_s[[nm]], 3), rownames = "variable"),
+                   file.path(tab_dir, paste0("05_correlation_", nm, ".csv")))
+c5_gt <- tibble::as_tibble(cor_s$pooled, rownames = "variable") %>% gt::gt() %>%
+  gt::tab_header("05. Spearman correlations (pooled)",
+                 "Between/within variants in 05_correlation_{between,within}.csv. gap<->sensitivity is mechanical; sr<->lr is the substantive pair.") %>%
+  gt::fmt_number(columns = -variable, decimals = 2)
+save_table(tibble::as_tibble(round(cor_s$pooled, 3), rownames = "variable"), c5_gt, "05_correlation_pooled")
+
+f5_df <- as.data.frame(as.table(cor_s$pooled)); names(f5_df) <- c("v1", "v2", "rho")
 f5 <- ggplot(f5_df, aes(v1, v2, fill = rho)) + geom_tile() +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 2) +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
   scale_fill_gradient2(limits = c(-1, 1), low = "#b2182b", mid = "white", high = "#2166ac") +
-  labs(title = "F5. Spearman correlations (pooled)", x = NULL, y = NULL) +
-  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-save_fig(f5, "F5_correlation_heatmap", w = 9, h = 8)
+  labs(title = "05. Spearman correlations (pooled)", x = NULL, y = NULL) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 30, hjust = 1))
+save_fig(f5, "05_correlation_heatmap", w = 7, h = 6)
 
-# F6 — scatterplot matrix (base graphics, winsorized).
-pairs_vars <- c("fb_ratio", "exp_gap_sr", "rev_total_gap_sr", "rev_own_gap_sr", "rev_tax_gap_sr")
-pm <- as.data.frame(lapply(res[pairs_vars], winsorize))
-grDevices::png(file.path(fig_dir, "F6_scatter_matrix.png"), width = 1100, height = 1100, res = 130)
-graphics::pairs(pm, pch = 20, cex = 0.4, col = grDevices::adjustcolor("black", 0.3),
-                main = "F6. Scatterplot matrix (winsorized)")
-grDevices::dev.off()
+# ======================================================================================
+# 06 — DISTRIBUTION BY SIZE QUINTILE
+# ======================================================================================
+s6 <- describe_vars(res %>% dplyr::filter(!is.na(size_class)), resil_vars, by = "size_class")
+s6_gt <- gt_summary_table(s6, "06. Resilience-outcome variables by size quintile (1 = smallest)")
+save_table(s6, s6_gt, "06_by_size_quintile")
 
-# F7 — variable dendrogram (1 - |Spearman rho|).
-hc <- stats::hclust(stats::as.dist(1 - abs(cor_s$pooled)))
-grDevices::png(file.path(fig_dir, "F7_variable_dendrogram.png"), width = 1000, height = 700, res = 130)
-graphics::plot(hc, main = "F7. Variable clustering (1 - |Spearman|)", xlab = "", sub = "")
-grDevices::dev.off()
+f6_df <- res %>% dplyr::filter(!is.na(size_class)) %>%
+  dplyr::select(size_class, dplyr::all_of(resil_vars)) %>%
+  dplyr::mutate(dplyr::across(dplyr::all_of(resil_vars), winsorize)) %>%
+  tidyr::pivot_longer(dplyr::all_of(resil_vars), names_to = "variable", values_to = "value") %>%
+  dplyr::mutate(variable = nice(variable))
+f6 <- ggplot(f6_df, aes(factor(size_class), value)) + geom_boxplot(outlier.size = 0.5) +
+  facet_wrap(~ variable, scales = "free_y") +
+  labs(title = "06. Resilience-outcome variables by size quintile (winsorized)",
+       x = "Size class (1 = smallest)", y = NULL) + theme_minimal()
+save_fig(f6, "06_by_size_quintile")
 
 message("60_descriptives.R complete -> ", out_root)

@@ -1,0 +1,127 @@
+---
+title: "Resilience Outcome Variables — Descriptive Statistics"
+subtitle: "NYS cities, 1995–2023 · Lee & Chen (2022) expenditure sensitivity"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    embed-resources: true
+    fig-align: center
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr); library(readr); library(gt); library(here); library(knitr)
+
+tab <- function(name) here::here("outputs", "descriptives", "tables", paste0(name, ".csv"))
+fig <- function(name) here::here("outputs", "descriptives", "figures", paste0(name, ".png"))
+
+# Render a saved CSV as a gt table, formatting numeric columns.
+show_tbl <- function(name, title = NULL, subtitle = NULL, decimals = 3) {
+  d <- readr::read_csv(tab(name), show_col_types = FALSE)
+  num <- names(d)[vapply(d, is.numeric, logical(1))]
+  g <- gt::gt(d)
+  if (!is.null(title)) g <- gt::tab_header(g, title = title, subtitle = subtitle)
+  if (length(num)) g <- gt::fmt_number(g, columns = dplyr::all_of(num), decimals = decimals)
+  if ("pct_missing" %in% names(d)) g <- gt::fmt_percent(g, columns = "pct_missing", decimals = 1)
+  if ("n" %in% names(d)) g <- gt::fmt_number(g, columns = "n", decimals = 0)
+  g
+}
+```
+
+This report describes the **resilience outcome** variables only — the expenditure-side
+*stability* measure of Lee & Chen (2022). The **fund-balance buffer** (a resource *predictor*)
+and **revenue volatility** (a *stressor*) are deliberately **excluded** here; they are described
+with the predictors. Scope: NYS **cities**, fiscal years **1995–2023** (FY2024 partial / FY2025
+dropped). New York City and its boroughs are absent from the OSC data. Figures are winsorized at
+the 1st/99th percentiles; tables report raw statistics. Artifacts are produced by
+`code/60_descriptives.R`; this document presents them.
+
+## 1. Definitions
+
+Resilience here is the ability to **maintain stable public services (operating spending)**. The
+headline DV is the Lee & Chen **sensitivity** index; the absolute **expenditure gaps** are its
+building blocks. *Lower = more resilient.*
+
+```{r}
+show_tbl("01_definitions")
+```
+
+## 2. Construction
+
+All measures are built from **General Fund** current-operating expenditure (object classes:
+personal services + contractual + employee benefits), per
+`plan_docs/01_fiscal_resilience_dv_plan.md`. The **short-run** gap is the absolute year-over-year
+percentage change; the **long-run** gap is the absolute deviation from each city's own
+log-linear expenditure trend. The **sensitivity** normalizes each gap by its peer-group
+(`size_class × year`) mean — the Lee & Chen resilience DV (our peer reference adapts their single
+national-average-per-year).
+
+```{r}
+show_tbl("02_construction")
+```
+
+## 3. Descriptive statistics & distribution
+
+The sensitivities average ≈ 1 **by construction**, so read their **spread** (SD, quartiles, max),
+not the mean. Operating-expenditure gaps are small and right-skewed — spending is sticky.
+
+```{r}
+show_tbl("03_summary_stats", decimals = 3)
+```
+
+```{r}
+#| fig-cap: "Distributions of the resilience-outcome variables (winsorized 1/99)."
+knitr::include_graphics(fig("03_distributions"))
+```
+
+## 4. Time series
+
+Mean by year, with the 2009 and 2020 shocks marked. Operating-expenditure stability does **not**
+deteriorate in shock years — spending is held steady — which is why the shock signal lives on the
+revenue/buffer side (the excluded predictors), not here.
+
+```{r}
+#| fig-cap: "Annual mean of each resilience-outcome variable; dashed lines = 2009, 2020."
+knitr::include_graphics(fig("04_time_series"))
+```
+
+## 5. Correlation
+
+Panel-aware Spearman correlations. Each gap and its sensitivity are mechanically linked (≈ 0.9);
+the substantive pair is **short-run vs long-run**, which are nearly independent — a city volatile
+year-to-year is not necessarily off its long-run trend. Between/within variants are in
+`05_correlation_{between,within}.csv`.
+
+```{r}
+show_tbl("05_correlation_pooled", decimals = 2)
+```
+
+```{r}
+#| fig-cap: "Spearman correlations (pooled)."
+knitr::include_graphics(fig("05_correlation_heatmap"))
+```
+
+## 6. Distribution by size quintile
+
+Size class = within-city quintile of time-averaged operating expenditure (1 = smallest). Smaller
+cities show larger expenditure gaps; the sensitivities average ≈ 1 within every class by
+construction, so compare their spread across classes.
+
+```{r}
+show_tbl("06_by_size_quintile", decimals = 3)
+```
+
+```{r}
+#| fig-cap: "Resilience-outcome variables by size quintile (winsorized 1/99)."
+knitr::include_graphics(fig("06_by_size_quintile"))
+```
+
+---
+
+*Reproduce:* run `code/40_construct_resilience.R` then `code/60_descriptives.R` to (re)generate
+the artifacts, then `quarto render analysis/resilience_descriptives.qmd`.
