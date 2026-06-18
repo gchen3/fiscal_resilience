@@ -3,10 +3,12 @@
 Audit and provenance trail for the project, so variables and models can be traced back to
 the raw OSC source data without reading the code.
 
-- [`variable_registry.md`](variable_registry.md) — every variable created in the pipeline,
-  its source OSC category, which entity types it exists for, and (to be filled by hand) its
-  OSC-glossary definition.
-- [`model_registry.md`](model_registry.md) — every statistical model / estimation, its
+- [`variable_registry.md`](variable_registry.md) - every variable created in the pipeline,
+  its source OSC category, which entity types it exists for, and its OSC-glossary definition
+  where available.
+- [`main_variable_registery.md`](main_variable_registery.md) - concise construction notes
+  for the main fiscal-resilience dependent variables.
+- [`model_registry.md`](model_registry.md) - every statistical model / estimation, its
   specification, sample, and the source variables it depends on.
 
 These files are **hand-maintained**. When variable-producing scripts (`code/20_clean.R`,
